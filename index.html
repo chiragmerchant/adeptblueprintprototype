@@ -244,7 +244,7 @@
 <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS/dist/pptxgen.bundle.js"></script>
 <script>
 // ────────────────────────────────────────────────
-// FULL 12-SLIDE DATA (your original content, unchanged)
+// FULL 12-SLIDE DATA
 // ────────────────────────────────────────────────
 const blueprint = {
   slides: [
@@ -521,7 +521,6 @@ html += `<div class="slide-title" contenteditable="true" data-field="${titleFiel
   if (slide.text) {
     html += `<h4>Main Text</h4><div contenteditable="true" data-field="text">${slide.text}</div>`;
   }
-  // Note: your original data has no .bullets arrays – left here for future use
   if (slide.bullets?.length) {
     html += `<h4>Bullets</h4><ul class="bullets">`;
     slide.bullets.forEach(item => html += `<li contenteditable="true">${item}</li>`);
@@ -576,7 +575,7 @@ function toggleTheme() {
 }
 
 // ────────────────────────────────────────────────
-// Export (your original version – unchanged)
+// Export 
 // ────────────────────────────────────────────────
 function exportToPPT() {
   const pptx = new PptxGenJS();
@@ -627,29 +626,6 @@ function exportToPPT() {
   pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
 }
 
-function exportToPPT2() {
-  console.log("Export started...");  // ← see if button even fires
-
-  const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE';
-
-  // Your loop adding slides remains the same
-  blueprint.slides.forEach(slide => {
-    const s = pptx.addSlide();
-    s.background = { color: document.body.classList.contains('dark') ? '000000' : 'FFFFFF' };
-    // ... rest of your slide adding code ...
-  });
-
-  pptx.writeFile({ fileName: 'ADEPT_Blueprint' })
-    .then(() => {
-      console.log("Export finished — file should be downloading now");
-      alert("Export complete! Check your Downloads folder for ADEPT_Blueprint.pptx");
-    })
-    .catch(err => {
-      console.error("Export failed:", err);
-      alert("Export failed: " + (err.message || "Unknown error — check console (F12)"));
-    });
-}
 
 // ────────────────────────────────────────────────
 // Init
