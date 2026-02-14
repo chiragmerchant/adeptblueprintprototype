@@ -430,6 +430,23 @@ frame.querySelectorAll('.slide-subtitle').forEach(el => {
   };
 });
 
+// Generic handler for headline, text, and any future data-field elements
+frame.querySelectorAll('[data-field]').forEach(el => {
+  const field = el.dataset.field;
+  if (!field) return;
+
+  el.onblur = () => {
+    const text = el.textContent.trim();
+    blueprint.slides[currentSlide][field] = text;
+    saveEdits();
+
+    // Optional: refresh thumbnail if this field affects what the thumb shows
+    if (field === 'headline' || field === 'text') {
+      updateThumbnail(currentSlide);
+    }
+  };
+});
+
   // Visual description
   const visualEl = frame.querySelector('.image-desc');
   if (visualEl) {
@@ -457,6 +474,8 @@ frame.querySelectorAll('.slide-subtitle').forEach(el => {
       saveEdits();
     };
   });
+
+  
 }
 
 function updateThumbnail(idx) {
@@ -497,12 +516,11 @@ html += `<div class="slide-title" contenteditable="true" data-field="${titleFiel
 
   // Headline or main text (if not already used as title)
   if (slide.headline && !slide.title) {
-    html += `<h4>Headline</h4><div contenteditable="true">${slide.headline}</div>`;
+    html += `<h4>Headline</h4><div contenteditable="true" data-field="headline">${slide.headline}</div>`;
   }
   if (slide.text) {
-    html += `<h4>Main Text</h4><div contenteditable="true">${slide.text}</div>`;
+    html += `<h4>Main Text</h4><div contenteditable="true" data-field="text">${slide.text}</div>`;
   }
-
   // Note: your original data has no .bullets arrays – left here for future use
   if (slide.bullets?.length) {
     html += `<h4>Bullets</h4><ul class="bullets">`;
