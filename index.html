@@ -617,10 +617,15 @@ function exportToPPT() {
       fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666', italic: true, align: 'center'
     });
 
-    if (slide.talkingPoints) {
-      s.addText("Speaker Notes:", { x: '10%', y: '75%', w: '80%', h: '10%', fontSize: 16, bold: true, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666' });
-      s.addText(slide.talkingPoints.join('\n'), { x: '10%', y: '82%', w: '80%', h: '15%', fontSize: 14, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000' });
-    }
+
+  if (slide.talkingPoints) {
+    s.addNotes(
+      slide.talkingPoints
+        .map(point => `• ${point}`)           
+        .join('\n')
+    );
+  }
+
   });
 
   pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
