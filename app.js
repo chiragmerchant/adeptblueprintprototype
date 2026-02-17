@@ -1,0 +1,340 @@
+// app.js
+
+let currentSlide = 0;
+let currentEditable = null;
+
+function loadEdits() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === blueprint.slides.length) {
+        blueprint.slides = parsed;
+      }
+    } catch (e) {
+      console.warn("Corrupted save data - using original slides");
+    }
+  }
+}
+
+function saveEdits() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(blueprint.slides));
+}
+
+function attachEditHandlers() {
+  const frame = document.getElementById('slideFrame');
+
+  // Title
+  const titleEl = frame.querySelector('.slide-title');
+  if (titleEl) {
+    const field = titleEl.dataset.field;
+    titleEl.onblur = () => {
+      blueprint.slides[currentSlide][field] = titleEl.textContent.trim();
+      saveEdits();
+      updateThumbnail(currentSlide);
+    };
+  }
+
+  // Subtitles / presenter / problem
+  frame.querySelectorAll('.slide-subtitle').forEach(el => {
+    const field = el.dataset.field;
+    el.onblur = () => {
+      blueprint.slides[currentSlide][field] = el.textContent.trim();
+      saveEdits();
+    };
+  });
+
+  // Headline & main text
+  frame.querySelectorAll('[data-field="headline"], [data-field="text"]').forEach(el => {
+    const field = el.dataset.field;
+    el.onblur = () => {
+      blueprint.slides[currentSlide][field] = el.textContent.trim();
+      saveEdits();
+      updateThumbnail(currentSlide);
+    };
+  });
+
+  // Visual
+  const visualEl = frame.querySelector('.image-desc');
+  if (visualEl) {
+    visualEl.onblur = () => {
+      blueprint.slides[currentSlide].visual = visualEl.textContent.trim();
+      saveEdits();
+    };
+  }
+
+  // Bullets & talking points
+  frame.querySelectorAll('.bullets li, .talking-points li').forEach(li => {
+    const field = li.dataset.field;
+    const idx = parseInt(li.dataset.index);
+    li.onblur = () => {
+      blueprint.slides[currentSlide][field][idx] = li.textContent.trim();
+      saveEdits();
+      if (field === 'bullets') updateThumbnail(currentSlide);
+    };
+  });
+
+  // AI icons – attach click handler
+  frame.querySelectorAll('.edit-icon').forEach(icon => {
+    icon.addEventListener('click', e => {
+      e.stopPropagation();
+      showAIMenu(icon.parentElement, e);
+    });
+  });
+}
+
+function updateThumbnail(idx) {
+  const thumb = document.querySelectorAll('.thumb')[idx];
+  if (thumb) {
+    const titleEl = thumb.querySelector('.slide-title');
+    const slide = blueprint.slides[idx];
+    titleEl.textContent = (slide.title || slide.headline || slide.text || 'Untitled').substring(0, 60);
+  }
+}
+
+function renderSlide() {
+  const frame = document.getElementById('slideFrame');
+  const slide = blueprint.slides[currentSlide];
+
+  let html = '';
+
+  // Title
+  const displayTitle = slide.title || slide.headline || `Slide ${currentSlide + 1}`;
+  const titleField = slide.title !== undefined ? 'title' : 'headline';
+  html += `
+    <div class="slide-title editable" contenteditable="true" data-field="${titleField}">
+      ${displayTitle}<span class="edit-icon">✨</span>
+    </div>`;
+
+  // Subtitle lines
+  if (slide.subtitle) {
+    html += `
+      <div class="slide-subtitle editable" contenteditable="true" data-field="subtitle">
+        ${slide.subtitle}<span class="edit-icon">✨</span>
+      </div>`;
+  }
+  if (slide.presenter) {
+    html += `
+      <div class="slide-subtitle editable" contenteditable="true" data-field="presenter">
+        ${slide.presenter}<span class="edit-icon">✨</span>
+      </div>`;
+  }
+  if (slide.oneLineProblem) {
+    html += `
+      <div class="slide-subtitle editable" contenteditable="true" data-field="oneLineProblem">
+        ${slide.oneLineProblem}<span class="edit-icon">✨</span>
+      </div>`;
+  }
+
+  html += `<div class="slide-body"><div class="content-left">`;
+
+  if (slide.headline && !slide.title) {
+    html += `
+      <h4>Headline</h4>
+      <div class="editable" contenteditable="true" data-field="headline">
+        ${slide.headline}<span class="edit-icon">✨</span>
+      </div>`;
+  }
+  if (slide.text) {
+    html += `
+      <h4>Main Text</h4>
+      <div class="editable" contenteditable="true" data-field="text">
+        ${slide.text}<span class="edit-icon">✨</span>
+      </div>`;
+  }
+
+  html += `</div><div class="content-right">
+    <h4>Visual / Image Description</h4>
+    <div class="image-desc editable" contenteditable="true" data-field="visual">
+      ${slide.visual || 'No visual description'}<span class="edit-icon">✨</span>
+    </div>
+  </div></div>`;
+
+  if (slide.talkingPoints?.length) {
+    html += `<div class="speaker-notes">
+      <h4>Speaker Notes / Talking Points</h4>
+      <ul class="talking-points">`;
+    slide.talkingPoints.forEach((p, i) => {
+      html += `
+        <li class="editable" contenteditable="true" data-field="talkingPoints" data-index="${i}">
+          ${p}<span class="edit-icon">✨</span>
+        </li>`;
+    });
+    html += `</ul></div>`;
+  }
+
+  frame.innerHTML = html;
+
+  document.getElementById('counter').textContent = `Slide ${currentSlide + 1} of ${blueprint.slides.length}`;
+  document.getElementById('prevBtn').disabled = currentSlide === 0;
+  document.getElementById('nextBtn').disabled = currentSlide === blueprint.slides.length - 1;
+
+  document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('active', i === currentSlide));
+
+  attachEditHandlers();
+}
+
+function renderRibbon() {
+  const ribbon = document.getElementById('ribbon');
+  ribbon.innerHTML = '';
+  blueprint.slides.forEach((slide, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const display = slide.title || slide.headline || slide.text || 'Untitled';
+    thumb.innerHTML = `<div class="slide-num">Slide ${i+1}</div><div class="slide-title">${display.substring(0,60)}</div>`;
+    thumb.onclick = () => { currentSlide = i; renderSlide(); };
+    ribbon.appendChild(thumb);
+  });
+}
+
+function prevSlide() { if (currentSlide > 0) { currentSlide--; renderSlide(); } }
+function nextSlide() { if (currentSlide < blueprint.slides.length - 1) { currentSlide++; renderSlide(); } }
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  document.getElementById('modeLabel').textContent = document.body.classList.contains('dark') ? 'Dark' : 'Light';
+}
+
+function exportToPPT() {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  blueprint.slides.forEach(slide => {
+    const s = pptx.addSlide();
+    s.background = { color: document.body.classList.contains('dark') ? '000000' : 'FFFFFF' };
+
+    s.addText(slide.title || slide.headline || 'Untitled', {
+      x: '10%', y: '5%', w: '80%', h: '15%',
+      fontSize: 44, bold: true, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', align: 'center'
+    });
+
+    let yPos = 20;
+    if (slide.subtitle) {
+      s.addText(slide.subtitle, { x: '10%', y: yPos + '%', w: '80%', h: '8%', fontSize: 28, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 8;
+    }
+    if (slide.presenter) {
+      s.addText(slide.presenter, { x: '10%', y: yPos + '%', w: '80%', h: '5%', fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 6;
+    }
+    if (slide.oneLineProblem) {
+      s.addText(slide.oneLineProblem, { x: '10%', y: yPos + '%', w: '80%', h: '10%', fontSize: 20, italic: true, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 12;
+    }
+
+    if (slide.text || slide.headline) {
+      s.addText(slide.text || slide.headline, {
+        x: '10%', y: yPos + '%', w: '55%', h: '50%',
+        fontSize: 24, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', bullet: true
+      });
+      yPos += 50;
+    }
+
+    s.addText(`[Visual Placeholder]\n${slide.visual || 'Insert image here'}`, {
+      x: '70%', y: '25%', w: '25%', h: '50%',
+      fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666', italic: true, align: 'center'
+    });
+
+    if (slide.talkingPoints) {
+      s.addNotes(
+        slide.talkingPoints.map(point => `• ${point}`).join('\n')
+      );
+    }
+  });
+
+  pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
+}
+
+// ── AI Menu Functions ──
+
+function showAIMenu(el, event) {
+  currentEditable = el;
+  const menu = document.getElementById('ai-menu');
+  const altsList = document.getElementById('ai-alts');
+
+  let key = `${currentSlide}-${el.dataset.field}`;
+  if (el.dataset.index !== undefined) {
+    key += `-${el.dataset.index}`;
+  }
+
+  const suggestions = alternatives[key] || ["No POC suggestions for this field yet."];
+
+  altsList.innerHTML = '';
+  suggestions.forEach(alt => {
+    const li = document.createElement('li');
+    li.textContent = alt;
+    li.onclick = () => {
+      const icon = el.querySelector('.edit-icon');
+      el.innerHTML = alt;
+      if (icon) el.appendChild(icon.cloneNode(true));
+      const field = el.dataset.field;
+      const idx = el.dataset.index;
+      if (idx !== undefined) {
+        blueprint.slides[currentSlide][field][parseInt(idx)] = alt;
+      } else {
+        blueprint.slides[currentSlide][field] = alt;
+      }
+      saveEdits();
+      menu.style.display = 'none';
+    };
+    altsList.appendChild(li);
+  });
+
+  menu.style.left = `${event.pageX + 10}px`;
+  menu.style.top = `${event.pageY}px`;
+  menu.style.display = 'block';
+}
+
+function simulateAIRequest() {
+  const input = document.getElementById('ai-input').value.trim();
+  if (!input || !currentEditable) return;
+
+  const currentText = currentEditable.textContent.trim();
+  const fakeSuggestions = [
+    `${currentText} (rephrased: more concise)`,
+    `${currentText} (enhanced: stronger impact)`,
+    `${currentText} (variant: formal tone)`
+  ];
+
+  // Replace current menu content with new suggestions
+  const altsList = document.getElementById('ai-alts');
+  altsList.innerHTML = `<li><em>Based on: "${input}"</em></li>`;
+  fakeSuggestions.forEach(sug => {
+    const li = document.createElement('li');
+    li.textContent = sug;
+    li.onclick = () => {
+      const icon = currentEditable.querySelector('.edit-icon');
+      currentEditable.innerHTML = sug;
+      if (icon) currentEditable.appendChild(icon.cloneNode(true));
+      // Save logic here (same as before)
+      const field = currentEditable.dataset.field;
+      const idx = currentEditable.dataset.index;
+      if (idx !== undefined) {
+        blueprint.slides[currentSlide][field][parseInt(idx)] = sug;
+      } else {
+        blueprint.slides[currentSlide][field] = sug;
+      }
+      saveEdits();
+      document.getElementById('ai-menu').style.display = 'none';
+    };
+    altsList.appendChild(li);
+  });
+
+  document.getElementById('ai-input').value = '';
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('ai-menu');
+  if (menu.style.display === 'block' && !menu.contains(e.target) && !e.target.classList.contains('edit-icon')) {
+    menu.style.display = 'none';
+  }
+});
+
+// ── Init ──
+window.onload = () => {
+  loadEdits();
+  renderRibbon();
+  renderSlide();
+  document.body.classList.remove('dark');
+  document.getElementById('themeSwitch').checked = false;
+  document.getElementById('modeLabel').textContent = 'Light';
+};

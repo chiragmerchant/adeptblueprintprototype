@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ADEPT Blueprint Editor</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #000000;
+      --border: #dddddd;
+      --thumb-bg: #f5f5f5;
+      --thumb-active: #cccccc;
+      --ribbon-bg: #f8f8f8;
+      --accent: #000000;
+    }
+    body.dark {
+      --bg: #000000;
+      --text: #ffffff;
+      --border: #444444;
+      --thumb-bg: #111111;
+      --thumb-active: #666666;
+      --ribbon-bg: #111111;
+      --accent: #ffffff;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+    .ribbon {
+      width: 220px;
+      background: var(--ribbon-bg);
+      border-right: 1px solid var(--border);
+      padding: 16px 8px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .thumb {
+      width: 100%;
+      background: var(--thumb-bg);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 10px 8px;
+      box-sizing: border-box;
+      transition: all 0.2s;
+      min-height: 80px;
+    }
+    .thumb .slide-num {
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: var(--accent);
+    }
+    .thumb .slide-title {
+      font-size: 0.85rem;
+      line-height: 1.3;
+    }
+    .thumb.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,0,0,0.2);
+    }
+    .thumb:hover {
+      background: var(--thumb-active);
+    }
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+    .preview-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .slide-frame {
+      width: 100%;
+      height: 100%;
+      max-width: 1200px;
+      max-height: 90vh;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+    }
+    .slide-title {
+      background: var(--bg);
+      padding: 24px 32px;
+      font-size: 2.6rem;
+      font-weight: bold;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      outline: none;
+      text-align: center;
+    }
+    .slide-subtitle {
+      background: var(--bg);
+      padding: 0 32px 24px;
+      font-size: 1.8rem;
+      color: var(--text);
+      text-align: center;
+      outline: none;
+    }
+    .slide-body {
+      flex: 1;
+      display: flex;
+      padding: 32px;
+      gap: 32px;
+      overflow: hidden;
+    }
+    .content-left {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .content-right {
+      width: 40%;
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      font-style: italic;
+      color: var(--text);
+      outline: none;
+    }
+    h4 {
+      color: var(--text);
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+    }
+    .bullets, .talking-points {
+      margin: 0;
+      padding-left: 24px;
+      font-size: 1.2rem;
+      line-height: 1.6;
+    }
+    .bullets li, .talking-points li {
+      margin-bottom: 12px;
+      outline: none;
+    }
+    .speaker-notes {
+      background: var(--bg);
+      padding: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 1rem;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .speaker-notes h4 {
+      margin-top: 0;
+    }
+    .bottom-bar {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      font-size: 1rem;
+    }
+    .export-btn {
+      background: #444;
+      color: var(--text);
+      border: none;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: all 0.2s;
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+    }
+    .export-btn:hover {
+      background: #666;
+      transform: translateY(-2px);
+    }
+    .theme-toggle {
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .theme-toggle:hover {
+      background: #ddd;
+    }
+    .theme-toggle input {
+      display: none;
+    }
+    .theme-toggle label {
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="ribbon" id="ribbon"></div>
+
+<div class="main-area">
+  <div class="preview-container">
+    <div class="slide-frame" id="slideFrame"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button onclick="prevSlide()" id="prevBtn">← Previous</button>
+    <span id="counter">Slide 1 of 12</span>
+    <button onclick="nextSlide()" id="nextBtn">Next →</button>
+    <label class="theme-toggle">
+      <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+      Mode: <span id="modeLabel">Light</span>
+    </label>
+  </div>
+</div>
+
+<button class="export-btn" onclick="exportToPPT()">Export PowerPoint</button>
+
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS/dist/pptxgen.bundle.js"></script>
+<script>
+// ────────────────────────────────────────────────
+// FULL 12-SLIDE DATA
+// ────────────────────────────────────────────────
+const blueprint = {
+  slides: [
+    {
+      title: "ADEPT: Advanced Dynamic Enhanced Presentation Tools",
+      subtitle: "Accelerating Mission Critical Communication",
+      presenter: "The Team | Date: Feb 28, 2026",
+      oneLineProblem: "Bridging the gap between complex technical data and immediate leadership understanding.",
+      visual: "A sleek, abstract visualization of data streams converging into a clear focal point."
+    },
+    {
+      headline: "The Data-Decision Paradox",
+      text: "World-class intelligence; Manual, inefficient delivery.",
+      visual: "Split screen: Complex raw data vs. cluttered PowerPoint slide.",
+      talkingPoints: [
+        "Right now, DTRA generates some of the most sophisticated intelligence on the planet.",
+        "But our 'last mile' of communication is broken.",
+        "We take brilliant data and bury it in manual, cluttered slides.",
+        "We call this the 'Data-Decision Paradox'—we have the truth, but we struggle to see it."
+      ]
+    },
+    {
+      headline: "The Subject Matter Expert",
+      text: "Mission-driven. Time-constrained. Needs to focus on threats, not formatting.",
+      visual: "Photo of a focused researcher in a command center.",
+      talkingPoints: [
+        "Think about our lead researchers.",
+        "They are mission-driven and incredibly pressed for time.",
+        "Every hour they spend aligning text boxes or choosing fonts is an hour they aren't analyzing threats.",
+        "They want to tell their story, but the current tools fight them every step of the way."
+      ]
+    },
+    {
+      headline: "The Cost of Inefficiency",
+      text: "Interpretation Delay = Strategy Gap.",
+      visual: "Timeline showing 'Time to Decision' extending dangerously long.",
+      talkingPoints: [
+        "This isn't just an annoyance; it's a liability.",
+        "When a briefing is unclear, leadership hesitates.",
+        "That hesitation creates a 'Strategy Gap.'",
+        "In our line of work, a delay in understanding isn't just lost time—it can mean a failure to act on a critical threat."
+      ]
+    },
+    {
+      headline: "Enter ADEPT",
+      text: "Automated Narrative Intelligence. Intent-based design.",
+      visual: "Sleek ADEPT logo/interface shot.",
+      talkingPoints: [
+        "This is why we built ADEPT.",
+        "It is not just a template; it is an intelligent application.",
+        "It automates the heavy lifting of design.",
+        "But more importantly, it structures the story based on the user's intent—whether they need to inform you, persuade you, or get a decision."
+      ]
+    },
+    {
+      headline: "The Design Challenge",
+      text: "Balancing Standardization (Speed) vs. Creativity (Engagement).",
+      visual: "Diagram showing the tension between 'Rigid' and 'Flexible.'",
+      talkingPoints: [
+        "Building this wasn't easy.",
+        "We faced a core conflict: How do we guarantee military-grade standardization without stifling the researcher's voice?",
+        "We had to engineer a 'flex-rigid' system—rigid enough for speed, but flexible enough for complex storytelling."
+      ]
+    },
+    {
+      headline: "Convergence of Expertise",
+      text: "Narrative Strategy + UX Design + Threat Analysis.",
+      visual: "Icons representing the three pillars.",
+      talkingPoints: [
+        "We realized code alone couldn't solve this.",
+        "We brought together three distinct disciplines: Narrative Strategists to build the logic, UX Designers to simplify the interface, and Threat Analysts to ensure the output speaks your language."
+      ]
+    },
+    {
+      headline: "The Narrative Engine",
+      text: "1. Input Data -> 2. Select Framework -> 3. Generate Deck.",
+      visual: "3-step process flow.",
+      talkingPoints: [
+        "Here is the magic.",
+        "The user simply uploads their raw data and selects a narrative framework—like '3-Act Structure' or 'Situation-Complication-Resolution.'",
+        "ADEPT does the rest.",
+        "It instantly generates a deck that is visually stunning and logically sound."
+      ]
+    },
+    {
+      headline: "Recovered Time, Increased Clarity",
+      text: "70% reduction in creation time. Higher comprehension scores.",
+      visual: "Bar charts comparing 'Hours Spent' and 'Comprehension.'",
+      talkingPoints: [
+        "The results from our alpha tests are clear.",
+        "We aren't just saving time—though a 70% reduction is massive.",
+        "We are increasing comprehension.",
+        "Leaders are understanding the 'so what' of technical briefings faster than ever before."
+      ]
+    },
+    {
+      headline: "A New Standard for Briefings",
+      text: "Consistent, compelling, story-driven communication.",
+      visual: "Mock-up of a high-tech briefing room.",
+      talkingPoints: [
+        "Imagine a future where every briefing you receive is this clear.",
+        "Where you never have to decipher a slide, only decide on the content.",
+        "That is the standard ADEPT establishes for the Agency."
+      ]
+    },
+    {
+      headline: "Deploy ADEPT",
+      text: "Authorization requested for Pilot Rollout (Forward Threat Division).",
+      visual: '"Launch" button or roadmap graphic.',
+      talkingPoints: [
+        "The tool is ready.",
+        "The team is ready.",
+        "We are asking for your authorization today to deploy the pilot program with the Forward Threat Division starting next quarter."
+      ]
+    },
+    {
+      headline: "Questions & Discussion",
+      talkingPoints: [
+        "Thank you.",
+        "We're happy to discuss the rollout plan or demonstrate the narrative engine in real-time."
+      ]
+    }
+  ]
+};
+
+// ────────────────────────────────────────────────
+// Persistence
+// ────────────────────────────────────────────────
+const STORAGE_KEY = 'adept_blueprint_edits_3ti';
+
+function loadEdits() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === blueprint.slides.length) {
+        blueprint.slides = parsed;
+      }
+    } catch (e) {
+      console.warn("Corrupted save data - using original slides");
+    }
+  }
+}
+
+function saveEdits() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(blueprint.slides));
+}
+
+// ────────────────────────────────────────────────
+// State & Navigation
+// ────────────────────────────────────────────────
+let currentSlide = 0;
+
+// ────────────────────────────────────────────────
+// Edit Handlers
+// ────────────────────────────────────────────────
+function attachEditHandlers() {
+  const frame = document.getElementById('slideFrame');
+
+// Main title / headline
+const titleEl = frame.querySelector('.slide-title');
+if (titleEl) {
+  const field = titleEl.dataset.field;
+  titleEl.onblur = () => {
+    const text = titleEl.textContent.trim();
+    blueprint.slides[currentSlide][field] = text;
+    saveEdits();
+    updateThumbnail(currentSlide);
+  };
+}
+
+// Subtitle-like fields
+frame.querySelectorAll('.slide-subtitle').forEach(el => {
+  const field = el.dataset.field;
+  if (!field) return;
+
+  el.onblur = () => {
+    const text = el.textContent.trim();
+    if (blueprint.slides[currentSlide][field] !== undefined) {
+      blueprint.slides[currentSlide][field] = text;
+      saveEdits();
+    }
+  };
+});
+
+// Generic handler for headline, text, and any future data-field elements
+frame.querySelectorAll('[data-field]').forEach(el => {
+  const field = el.dataset.field;
+  if (!field) return;
+
+  el.onblur = () => {
+    const text = el.textContent.trim();
+    blueprint.slides[currentSlide][field] = text;
+    saveEdits();
+
+    // Optional: refresh thumbnail if this field affects what the thumb shows
+    if (field === 'headline' || field === 'text') {
+      updateThumbnail(currentSlide);
+    }
+  };
+});
+
+  // Visual description
+  const visualEl = frame.querySelector('.image-desc');
+  if (visualEl) {
+    visualEl.onblur = () => {
+      blueprint.slides[currentSlide].visual = visualEl.textContent.trim();
+      saveEdits();
+    };
+  }
+
+  // Bullets (if present)
+  frame.querySelectorAll('.bullets li').forEach((li, i) => {
+    li.onblur = () => {
+      if (!blueprint.slides[currentSlide].bullets) blueprint.slides[currentSlide].bullets = [];
+      blueprint.slides[currentSlide].bullets[i] = li.textContent.trim();
+      saveEdits();
+      updateThumbnail(currentSlide);
+    };
+  });
+
+  // Talking points
+  frame.querySelectorAll('.talking-points li').forEach((li, i) => {
+    li.onblur = () => {
+      if (!blueprint.slides[currentSlide].talkingPoints) blueprint.slides[currentSlide].talkingPoints = [];
+      blueprint.slides[currentSlide].talkingPoints[i] = li.textContent.trim();
+      saveEdits();
+    };
+  });
+
+  
+}
+
+function updateThumbnail(idx) {
+  const thumb = document.querySelectorAll('.thumb')[idx];
+  if (!thumb) return;
+  const titleEl = thumb.querySelector('.slide-title');
+  const slide = blueprint.slides[idx];
+  titleEl.textContent = (slide.title || slide.headline || slide.text || 'Untitled').substring(0, 60);
+}
+
+// ────────────────────────────────────────────────
+// Rendering
+// ────────────────────────────────────────────────
+function renderSlide() {
+  const frame = document.getElementById('slideFrame');
+  const slide = blueprint.slides[currentSlide];
+
+  let html = '';
+// Main title area
+const displayTitle = slide.title || slide.headline || `Slide ${currentSlide + 1}`;
+const titleField = slide.title !== undefined ? 'title' : 'headline';
+html += `<div class="slide-title" contenteditable="true" data-field="${titleField}">${displayTitle}</div>`;
+
+    // Secondary lines
+    if (slide.subtitle) {
+    html += `<div class="slide-subtitle" contenteditable="true" data-field="subtitle">${slide.subtitle}</div>`;
+    }
+    if (slide.presenter) {
+    html += `<div class="slide-subtitle" contenteditable="true" data-field="presenter">${slide.presenter}</div>`;
+    }
+    if (slide.oneLineProblem) {
+    html += `<div class="slide-subtitle" contenteditable="true" data-field="oneLineProblem">${slide.oneLineProblem}</div>`;
+}
+
+
+  html += `<div class="slide-body">
+    <div class="content-left">`;
+
+  // Headline or main text (if not already used as title)
+  if (slide.headline && !slide.title) {
+    html += `<h4>Headline</h4><div contenteditable="true" data-field="headline">${slide.headline}</div>`;
+  }
+  if (slide.text) {
+    html += `<h4>Main Text</h4><div contenteditable="true" data-field="text">${slide.text}</div>`;
+  }
+  if (slide.bullets?.length) {
+    html += `<h4>Bullets</h4><ul class="bullets">`;
+    slide.bullets.forEach(item => html += `<li contenteditable="true">${item}</li>`);
+    html += `</ul>`;
+  }
+
+  html += `</div>
+    <div class="content-right">
+      <h4>Visual / Image Description</h4>
+      <div class="image-desc" contenteditable="true">${slide.visual || 'No visual description'}</div>
+    </div>
+  </div>`;
+
+  if (slide.talkingPoints?.length) {
+    html += `<div class="speaker-notes">
+      <h4>Speaker Notes / Talking Points</h4>
+      <ul class="talking-points">`;
+    slide.talkingPoints.forEach(p => html += `<li contenteditable="true">${p}</li>`);
+    html += `</ul></div>`;
+  }
+
+  frame.innerHTML = html;
+
+  document.getElementById('counter').textContent = `Slide ${currentSlide + 1} of ${blueprint.slides.length}`;
+  document.getElementById('prevBtn').disabled = currentSlide === 0;
+  document.getElementById('nextBtn').disabled = currentSlide === blueprint.slides.length - 1;
+
+  document.querySelectorAll('.thumb').forEach((t, i) => t.classList.toggle('active', i === currentSlide));
+
+  attachEditHandlers();
+}
+
+function renderRibbon() {
+  const ribbon = document.getElementById('ribbon');
+  ribbon.innerHTML = '';
+  blueprint.slides.forEach((slide, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    const display = slide.title || slide.headline || slide.text || 'Untitled';
+    thumb.innerHTML = `<div class="slide-num">Slide ${i+1}</div><div class="slide-title">${display.substring(0,60)}</div>`;
+    thumb.onclick = () => { currentSlide = i; renderSlide(); };
+    ribbon.appendChild(thumb);
+  });
+}
+
+function prevSlide() { if (currentSlide > 0) { currentSlide--; renderSlide(); } }
+function nextSlide() { if (currentSlide < blueprint.slides.length - 1) { currentSlide++; renderSlide(); } }
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  document.getElementById('modeLabel').textContent = document.body.classList.contains('dark') ? 'Dark' : 'Light';
+}
+
+// ────────────────────────────────────────────────
+// Export 
+// ────────────────────────────────────────────────
+function exportToPPT() {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  blueprint.slides.forEach(slide => {
+    const s = pptx.addSlide();
+    s.background = { color: document.body.classList.contains('dark') ? '000000' : 'FFFFFF' };
+
+    s.addText(slide.title || slide.headline || 'Untitled', {
+      x: '10%', y: '5%', w: '80%', h: '15%',
+      fontSize: 44, bold: true, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', align: 'center'
+    });
+
+    let yPos = 20;
+    if (slide.subtitle) {
+      s.addText(slide.subtitle, { x: '10%', y: yPos + '%', w: '80%', h: '8%', fontSize: 28, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 8;
+    }
+    if (slide.presenter) {
+      s.addText(slide.presenter, { x: '10%', y: yPos + '%', w: '80%', h: '5%', fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 6;
+    }
+    if (slide.oneLineProblem) {
+      s.addText(slide.oneLineProblem, { x: '10%', y: yPos + '%', w: '80%', h: '10%', fontSize: 20, italic: true, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 12;
+    }
+
+    if (slide.text || slide.headline) {
+      s.addText(slide.text || slide.headline, {
+        x: '10%', y: yPos + '%', w: '55%', h: '50%',
+        fontSize: 24, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', bullet: true
+      });
+      yPos += 50;
+    }
+
+    s.addText(`[Visual Placeholder]\n${slide.visual || 'Insert image here'}`, {
+      x: '70%', y: '25%', w: '25%', h: '50%',
+      fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666', italic: true, align: 'center'
+    });
+
+
+  if (slide.talkingPoints) {
+    s.addNotes(
+      slide.talkingPoints
+        .map(point => `• ${point}`)           
+        .join('\n')
+    );
+  }
+
+  });
+
+  pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
+}
+
+
+// ────────────────────────────────────────────────
+// Init
+// ────────────────────────────────────────────────
+window.onload = () => {
+  loadEdits();
+  renderRibbon();
+  renderSlide();
+  document.body.classList.remove('dark');
+  document.getElementById('themeSwitch').checked = false;
+  document.getElementById('modeLabel').textContent = 'Light';
+};
+</script>
+</body>
+</html>
