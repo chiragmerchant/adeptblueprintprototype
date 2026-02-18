@@ -73,13 +73,26 @@ function attachEditHandlers() {
     };
   });
 
-  // Magic icons
-  frame.querySelectorAll('.edit-icon').forEach(icon => {
-    icon.addEventListener('click', e => {
-      e.stopPropagation();
-      showAIMenu(icon.parentElement, e);
-    });
+// Magic icons
+frame.querySelectorAll('.edit-icon').forEach(icon => {
+  icon.addEventListener('click', e => {
+    e.preventDefault();          // ← important: stop default behavior
+    e.stopPropagation();         // ← stop bubbling to parent
+
+    // Optional: explicitly blur the parent editable element
+    const editableParent = icon.closest('.editable');
+    if (editableParent) {
+      editableParent.blur();
+    }
+
+    showAIMenu(icon.parentElement, e);
   });
+
+  // Optional: prevent mousedown from focusing (some browsers are aggressive)
+  icon.addEventListener('mousedown', e => {
+    e.preventDefault();
+  });
+});
 }
 
 function updateThumbnail(idx) {

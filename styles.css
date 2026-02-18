@@ -223,26 +223,33 @@ h4 {
 
 .editable {
   position: relative;
+  cursor: text;               /* normal text cursor over the content area */
 }
 
+.editable:hover .edit-icon {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.3);
+}
+
+/* Make sure icon never looks like it's editable */
 .edit-icon {
+  pointer-events: auto;       /* allow clicks on icon */
+  user-select: none;          /* can't select the icon text */
+  -webkit-user-select: none;
+  cursor: pointer;            /* hand cursor over icon */
   position: absolute;
   top: 50%;
   right: 12px;
   transform: translateY(-50%);
   font-size: 1.3rem;
-  cursor: pointer;
   color: var(--accent);
-  opacity: 0.6;
+  opacity: 0;
   transition: opacity 0.2s, transform 0.2s;
-  pointer-events: auto;
-  z-index: 1;
 }
 
-.editable:hover .edit-icon,
-.edit-icon:hover {
-  opacity: 1;
-  transform: translateY(-50%) scale(1.3);
+/* Prevent cursor when hovering icon itself */
+.editable .edit-icon:hover {
+  cursor: pointer;
 }
 
 #ai-menu {
