@@ -1,7 +1,6 @@
-// app.js
-
 let currentSlide = 0;
 let currentEditable = null;
+let originalBlueprint = null;
 
 function loadEdits() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -35,7 +34,7 @@ function attachEditHandlers() {
     };
   }
 
-  // Subtitles / presenter / problem
+  // Subtitles
   frame.querySelectorAll('.slide-subtitle').forEach(el => {
     const field = el.dataset.field;
     el.onblur = () => {
@@ -74,7 +73,7 @@ function attachEditHandlers() {
     };
   });
 
-  // AI icons – attach click handler
+  // Magic icons
   frame.querySelectorAll('.edit-icon').forEach(icon => {
     icon.addEventListener('click', e => {
       e.stopPropagation();
@@ -98,7 +97,6 @@ function renderSlide() {
 
   let html = '';
 
-  // Title
   const displayTitle = slide.title || slide.headline || `Slide ${currentSlide + 1}`;
   const titleField = slide.title !== undefined ? 'title' : 'headline';
   html += `
@@ -106,7 +104,6 @@ function renderSlide() {
       ${displayTitle}<span class="edit-icon">✨</span>
     </div>`;
 
-  // Subtitle lines
   if (slide.subtitle) {
     html += `
       <div class="slide-subtitle editable" contenteditable="true" data-field="subtitle">
@@ -245,8 +242,7 @@ function exportToPPT() {
   pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
 }
 
-// ── AI Menu Functions ──
-
+// AI Menu
 function showAIMenu(el, event) {
   currentEditable = el;
   const menu = document.getElementById('ai-menu');
@@ -257,16 +253,22 @@ function showAIMenu(el, event) {
     key += `-${el.dataset.index}`;
   }
 
-  const suggestions = alternatives[key] || ["No POC suggestions for this field yet."];
+  const suggestions = alternatives[key] || ["No suggestions available."];
 
   altsList.innerHTML = '';
   suggestions.forEach(alt => {
     const li = document.createElement('li');
     li.textContent = alt;
     li.onclick = () => {
+      // Safe text update: remove icon, set textContent, re-add icon
       const icon = el.querySelector('.edit-icon');
-      el.innerHTML = alt;
-      if (icon) el.appendChild(icon.cloneNode(true));
+      if (icon) icon.remove();
+
+      el.textContent = alt;
+
+      if (icon) el.appendChild(icon);
+
+      // Save
       const field = el.dataset.field;
       const idx = el.dataset.index;
       if (idx !== undefined) {
@@ -275,53 +277,80 @@ function showAIMenu(el, event) {
         blueprint.slides[currentSlide][field] = alt;
       }
       saveEdits();
+
       menu.style.display = 'none';
     };
     altsList.appendChild(li);
   });
 
-  menu.style.left = `${event.pageX + 10}px`;
-  menu.style.top = `${event.pageY}px`;
+  // Smart positioning
+  const rect = el.getBoundingClientRect();
+  const menuW = menu.offsetWidth || 280;
+  const menuH = menu.offsetHeight || 200;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+
+  const iconRect = el.querySelector('.edit-icon') ? el.querySelector('.edit-icon').getBoundingClientRect() : rect;
+  const iconCenterX = iconRect.left + iconRect.width / 2;
+  const iconCenterY = iconRect.top + iconRect.height / 2;
+
+  const space = {
+    topLeft:     { w: iconCenterX, h: iconCenterY },
+    topRight:    { w: viewportW - iconCenterX, h: iconCenterY },
+    bottomLeft:  { w: iconCenterX, h: viewportH - iconCenterY },
+    bottomRight: { w: viewportW - iconCenterX, h: viewportH - iconCenterY }
+  };
+
+  let bestCorner = 'bottomRight';
+  let bestScore = 0;
+  for (const [corner, s] of Object.entries(space)) {
+    const score = s.w * s.h;
+    if (score > bestScore) {
+      bestScore = score;
+      bestCorner = corner;
+    }
+  }
+
+  let left, top;
+  const offset = 6;
+
+  switch (bestCorner) {
+    case 'topLeft':
+      left = iconRect.left - menuW - offset;
+      top = iconRect.top - menuH - offset;
+      break;
+    case 'topRight':
+      left = iconRect.right + offset;
+      top = iconRect.top - menuH - offset;
+      break;
+    case 'bottomLeft':
+      left = iconRect.left - menuW - offset;
+      top = iconRect.bottom + offset;
+      break;
+    case 'bottomRight':
+    default:
+      left = iconRect.right + offset;
+      top = iconRect.bottom + offset;
+      break;
+  }
+
+  left = Math.max(8, Math.min(left, viewportW - menuW - 8));
+  top = Math.max(8, Math.min(top, viewportH - menuH - 8));
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
   menu.style.display = 'block';
 }
 
 function simulateAIRequest() {
   const input = document.getElementById('ai-input').value.trim();
-  if (!input || !currentEditable) return;
-
-  const currentText = currentEditable.textContent.trim();
-  const fakeSuggestions = [
-    `${currentText} (rephrased: more concise)`,
-    `${currentText} (enhanced: stronger impact)`,
-    `${currentText} (variant: formal tone)`
-  ];
-
-  // Replace current menu content with new suggestions
-  const altsList = document.getElementById('ai-alts');
-  altsList.innerHTML = `<li><em>Based on: "${input}"</em></li>`;
-  fakeSuggestions.forEach(sug => {
-    const li = document.createElement('li');
-    li.textContent = sug;
-    li.onclick = () => {
-      const icon = currentEditable.querySelector('.edit-icon');
-      currentEditable.innerHTML = sug;
-      if (icon) currentEditable.appendChild(icon.cloneNode(true));
-      // Save logic here (same as before)
-      const field = currentEditable.dataset.field;
-      const idx = currentEditable.dataset.index;
-      if (idx !== undefined) {
-        blueprint.slides[currentSlide][field][parseInt(idx)] = sug;
-      } else {
-        blueprint.slides[currentSlide][field] = sug;
-      }
-      saveEdits();
-      document.getElementById('ai-menu').style.display = 'none';
-    };
-    altsList.appendChild(li);
-  });
-
-  document.getElementById('ai-input').value = '';
+  if (input && currentEditable) {
+    alert(`POC: Simulated response to "${input}" — using hardcoded alternatives.`);
+  } else {
+    alert("Enter a request.");
+  }
 }
+
 document.addEventListener('click', e => {
   const menu = document.getElementById('ai-menu');
   if (menu.style.display === 'block' && !menu.contains(e.target) && !e.target.classList.contains('edit-icon')) {
@@ -329,11 +358,99 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Init ──
-window.onload = () => {
-  loadEdits();
+
+
+function prevSlide() { if (currentSlide > 0) { currentSlide--; renderSlide(); } }
+function nextSlide() { if (currentSlide < blueprint.slides.length - 1) { currentSlide++; renderSlide(); } }
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  document.getElementById('modeLabel').textContent = document.body.classList.contains('dark') ? 'Dark' : 'Light';
+}
+
+function exportToPPT() {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  blueprint.slides.forEach(slide => {
+    const s = pptx.addSlide();
+    s.background = { color: document.body.classList.contains('dark') ? '000000' : 'FFFFFF' };
+
+    s.addText(slide.title || slide.headline || 'Untitled', {
+      x: '10%', y: '5%', w: '80%', h: '15%',
+      fontSize: 44, bold: true, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', align: 'center'
+    });
+
+    let yPos = 20;
+    if (slide.subtitle) {
+      s.addText(slide.subtitle, { x: '10%', y: yPos + '%', w: '80%', h: '8%', fontSize: 28, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 8;
+    }
+    if (slide.presenter) {
+      s.addText(slide.presenter, { x: '10%', y: yPos + '%', w: '80%', h: '5%', fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 6;
+    }
+    if (slide.oneLineProblem) {
+      s.addText(slide.oneLineProblem, { x: '10%', y: yPos + '%', w: '80%', h: '10%', fontSize: 20, italic: true, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
+      yPos += 12;
+    }
+
+    if (slide.text || slide.headline) {
+      s.addText(slide.text || slide.headline, {
+        x: '10%', y: yPos + '%', w: '55%', h: '50%',
+        fontSize: 24, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', bullet: true
+      });
+      yPos += 50;
+    }
+
+    s.addText(`[Visual Placeholder]\n${slide.visual || 'Insert image here'}`, {
+      x: '70%', y: '25%', w: '25%', h: '50%',
+      fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666', italic: true, align: 'center'
+    });
+
+    if (slide.talkingPoints) {
+      s.addNotes(
+        slide.talkingPoints.map(point => `• ${point}`).join('\n')
+      );
+    }
+  });
+
+  pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
+}
+function resetToOriginal() {
+  if (!confirm("This will discard ALL your edits and revert to the original blueprint. Continue?")) {
+    return;
+  }
+
+  localStorage.removeItem(STORAGE_KEY);
+
+  // Restore from the preserved original snapshot
+  blueprint.slides = JSON.parse(JSON.stringify(originalBlueprint.slides));
+
+  currentSlide = 0;
+
+  const ribbon = document.getElementById('ribbon');
+  ribbon.innerHTML = '';
+
   renderRibbon();
   renderSlide();
+
+  setTimeout(() => {
+    alert("Reset complete — back to original blueprint.");
+  }, 50);
+}
+
+
+window.onload = () => {
+  // Capture pristine original BEFORE loadEdits can overwrite it
+  if (!originalBlueprint) {
+    originalBlueprint = JSON.parse(JSON.stringify(blueprint));
+  }
+
+  loadEdits();       // now safe — edits overwrite the working copy only
+  renderRibbon();
+  renderSlide();
+
   document.body.classList.remove('dark');
   document.getElementById('themeSwitch').checked = false;
   document.getElementById('modeLabel').textContent = 'Light';
