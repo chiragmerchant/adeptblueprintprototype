@@ -252,20 +252,59 @@ h4 {
   cursor: pointer;
 }
 
+
+
 #ai-menu {
   position: absolute;
-  display: none;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  position-anchor: auto;                /* will use the nearest/clicked anchor via JS context */
+  position-area: right top;             /* preferred: appear to the right, top-aligned with icon */
+  margin-left: 10px;                    /* small gap from icon */
+  
+  /* Automatic flipping when right side is too narrow */
+  position-try-fallbacks: 
+    --bottom-right,
+    --bottom-left,
+    flip-inline, 
+    --left-top,
+    flip-block;
+  
+  /* Hide if somehow invalid (very rare) */
+  position-visibility: anchors-visible;
+  
+  /* Your existing appearance styles */
+  display: none;                        /* still controlled by JS */
+  width: 280px;
+  background: white;
+  border: 1px solid #ccc;
   border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   padding: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   z-index: 1000;
-  min-width: 240px;
-  max-width: 380px;
   max-height: 60vh;
   overflow-y: auto;
 }
+
+/* Custom fallback positions */
+@position-try --bottom-right {
+  position-area: bottom right;
+  margin-top: 8px;
+  margin-left: -40px;   /* slight negative to feel connected */
+}
+
+@position-try --bottom-left {
+  position-area: bottom left;
+  margin-top: 8px;
+  margin-right: -40px;
+}
+
+@position-try --left-top {
+  position-area: left top;
+  margin-right: 10px;
+}
+
+/* Optional: make sure menu doesn't cover too much editable area by preferring sides */
+
+
 
 #ai-menu h5 {
   margin: 0 0 8px;

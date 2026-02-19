@@ -104,7 +104,6 @@ function updateThumbnail(idx) {
     titleEl.textContent = (slide.title || slide.headline || slide.text || 'Untitled').substring(0, 60);
   }
 }
-
 function renderSlide() {
   const frame = document.getElementById('slideFrame');
   const slide = blueprint.slides[currentSlide];
@@ -113,51 +112,58 @@ function renderSlide() {
 
   const displayTitle = slide.title || slide.headline || `Slide ${currentSlide + 1}`;
   const titleField = slide.title !== undefined ? 'title' : 'headline';
+  const titleAnchor = `--ai-trigger-${currentSlide}-${titleField}`;
+
   html += `
     <div class="slide-title editable" contenteditable="true" data-field="${titleField}">
-      ${displayTitle}<span class="edit-icon">✨</span>
+      ${displayTitle}<span class="edit-icon" style="anchor-name: ${titleAnchor};">✨</span>
     </div>`;
 
   if (slide.subtitle) {
+    const subAnchor = `--ai-trigger-${currentSlide}-subtitle`;
     html += `
       <div class="slide-subtitle editable" contenteditable="true" data-field="subtitle">
-        ${slide.subtitle}<span class="edit-icon">✨</span>
+        ${slide.subtitle}<span class="edit-icon" style="anchor-name: ${subAnchor};">✨</span>
       </div>`;
   }
   if (slide.presenter) {
+    const presAnchor = `--ai-trigger-${currentSlide}-presenter`;
     html += `
       <div class="slide-subtitle editable" contenteditable="true" data-field="presenter">
-        ${slide.presenter}<span class="edit-icon">✨</span>
+        ${slide.presenter}<span class="edit-icon" style="anchor-name: ${presAnchor};">✨</span>
       </div>`;
   }
   if (slide.oneLineProblem) {
+    const probAnchor = `--ai-trigger-${currentSlide}-oneLineProblem`;
     html += `
       <div class="slide-subtitle editable" contenteditable="true" data-field="oneLineProblem">
-        ${slide.oneLineProblem}<span class="edit-icon">✨</span>
+        ${slide.oneLineProblem}<span class="edit-icon" style="anchor-name: ${probAnchor};">✨</span>
       </div>`;
   }
 
   html += `<div class="slide-body"><div class="content-left">`;
 
   if (slide.headline && !slide.title) {
+    const hlAnchor = `--ai-trigger-${currentSlide}-headline`;
     html += `
       <h4>Headline</h4>
       <div class="editable" contenteditable="true" data-field="headline">
-        ${slide.headline}<span class="edit-icon">✨</span>
+        ${slide.headline}<span class="edit-icon" style="anchor-name: ${hlAnchor};">✨</span>
       </div>`;
   }
   if (slide.text) {
+    const textAnchor = `--ai-trigger-${currentSlide}-text`;
     html += `
       <h4>Main Text</h4>
       <div class="editable" contenteditable="true" data-field="text">
-        ${slide.text}<span class="edit-icon">✨</span>
+        ${slide.text}<span class="edit-icon" style="anchor-name: ${textAnchor};">✨</span>
       </div>`;
   }
 
   html += `</div><div class="content-right">
     <h4>Visual / Image Description</h4>
     <div class="image-desc editable" contenteditable="true" data-field="visual">
-      ${slide.visual || 'No visual description'}<span class="edit-icon">✨</span>
+      ${slide.visual || 'No visual description'}<span class="edit-icon" style="anchor-name: --ai-trigger-${currentSlide}-visual;">✨</span>
     </div>
   </div></div>`;
 
@@ -166,9 +172,10 @@ function renderSlide() {
       <h4>Speaker Notes / Talking Points</h4>
       <ul class="talking-points">`;
     slide.talkingPoints.forEach((p, i) => {
+      const tpAnchor = `--ai-trigger-${currentSlide}-talkingPoints-${i}`;
       html += `
         <li class="editable" contenteditable="true" data-field="talkingPoints" data-index="${i}">
-          ${p}<span class="edit-icon">✨</span>
+          ${p}<span class="edit-icon" style="anchor-name: ${tpAnchor};">✨</span>
         </li>`;
     });
     html += `</ul></div>`;
