@@ -1,7 +1,8 @@
+import { brandings } from './branding.js';
 let currentSlide = 0;
 let currentEditable = null;
 let originalBlueprint = null;
-
+let selectedBrandingKey = 'light'; // default
 function loadEdits() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -76,8 +77,8 @@ function attachEditHandlers() {
 // Magic icons
 frame.querySelectorAll('.edit-icon').forEach(icon => {
   icon.addEventListener('click', e => {
-    e.preventDefault();          // ← important: stop default behavior
-    e.stopPropagation();         // ← stop bubbling to parent
+    e.preventDefault();          //  stop default behavior
+    e.stopPropagation();         //  stop bubbling to parent
 
     // Optional: explicitly blur the parent editable element
     const editableParent = icon.closest('.editable');
@@ -88,7 +89,7 @@ frame.querySelectorAll('.edit-icon').forEach(icon => {
     showAIMenu(icon.parentElement, e);
   });
 
-  // Optional: prevent mousedown from focusing (some browsers are aggressive)
+  // prevent mousedown from focusing (some browsers are aggressive)
   icon.addEventListener('mousedown', e => {
     e.preventDefault();
   });
@@ -197,63 +198,6 @@ function renderRibbon() {
   });
 }
 
-function prevSlide() { if (currentSlide > 0) { currentSlide--; renderSlide(); } }
-function nextSlide() { if (currentSlide < blueprint.slides.length - 1) { currentSlide++; renderSlide(); } }
-
-function toggleTheme() {
-  document.body.classList.toggle('dark');
-  document.getElementById('modeLabel').textContent = document.body.classList.contains('dark') ? 'Dark' : 'Light';
-}
-
-function exportToPPT() {
-  const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE';
-
-  blueprint.slides.forEach(slide => {
-    const s = pptx.addSlide();
-    s.background = { color: document.body.classList.contains('dark') ? '000000' : 'FFFFFF' };
-
-    s.addText(slide.title || slide.headline || 'Untitled', {
-      x: '10%', y: '5%', w: '80%', h: '15%',
-      fontSize: 44, bold: true, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', align: 'center'
-    });
-
-    let yPos = 20;
-    if (slide.subtitle) {
-      s.addText(slide.subtitle, { x: '10%', y: yPos + '%', w: '80%', h: '8%', fontSize: 28, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
-      yPos += 8;
-    }
-    if (slide.presenter) {
-      s.addText(slide.presenter, { x: '10%', y: yPos + '%', w: '80%', h: '5%', fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
-      yPos += 6;
-    }
-    if (slide.oneLineProblem) {
-      s.addText(slide.oneLineProblem, { x: '10%', y: yPos + '%', w: '80%', h: '10%', fontSize: 20, italic: true, color: document.body.classList.contains('dark') ? 'CCCCCC' : '333333', align: 'center' });
-      yPos += 12;
-    }
-
-    if (slide.text || slide.headline) {
-      s.addText(slide.text || slide.headline, {
-        x: '10%', y: yPos + '%', w: '55%', h: '50%',
-        fontSize: 24, color: document.body.classList.contains('dark') ? 'FFFFFF' : '000000', bullet: true
-      });
-      yPos += 50;
-    }
-
-    s.addText(`[Visual Placeholder]\n${slide.visual || 'Insert image here'}`, {
-      x: '70%', y: '25%', w: '25%', h: '50%',
-      fontSize: 18, color: document.body.classList.contains('dark') ? 'CCCCCC' : '666666', italic: true, align: 'center'
-    });
-
-    if (slide.talkingPoints) {
-      s.addNotes(
-        slide.talkingPoints.map(point => `• ${point}`).join('\n')
-      );
-    }
-  });
-
-  pptx.writeFile({ fileName: 'ADEPT_Blueprint' });
-}
 
 // AI Menu
 function showAIMenu(el, event) {
@@ -358,9 +302,9 @@ function showAIMenu(el, event) {
 function simulateAIRequest() {
   const input = document.getElementById('ai-input').value.trim();
   if (input && currentEditable) {
-    alert(`POC: Simulated response to "${input}" — using hardcoded alternatives.`);
+    alert(`Simulated response to "${input}". Under development. Use provided alternatives.`);
   } else {
-    alert("Enter a request.");
+    alert("That's a blank request.");
   }
 }
 
@@ -381,7 +325,7 @@ function toggleTheme() {
   document.getElementById('modeLabel').textContent = document.body.classList.contains('dark') ? 'Dark' : 'Light';
 }
 
-function exportToPPT() {
+function exportToPPTOld() {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
 
@@ -454,6 +398,118 @@ function resetToOriginal() {
 }
 
 
+function exportToPPT() {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  // Read the current selection from the dropdown
+  const brandingSelect = document.getElementById('brandingSelect');
+  const selectedKey = brandingSelect?.value || 'light';  // fallback to 'light' if missing
+
+  // Get the chosen branding config
+  const selectedBranding = brandings[selectedKey] || brandings['light'];
+
+  // Apply global font defaults from the selected branding
+  pptx.theme = {
+    headFontFace: selectedBranding.fonts.heading.face,
+    bodyFontFace: selectedBranding.fonts.body.face
+  };
+
+  // Define branded master slide using the selected branding
+  pptx.defineSlideMaster({
+    title: 'ADEPT_MASTER',
+    margin: [0.5, 0.5, 0.75, 0.5],
+    background: { color: selectedBranding.colors.background },
+    objects: [
+      // Logo
+      { image: { 
+          x: selectedBranding.brandingElements.logo.x, 
+          y: selectedBranding.brandingElements.logo.y, 
+          w: selectedBranding.brandingElements.logo.w, 
+          h: selectedBranding.brandingElements.logo.h, 
+          path: selectedBranding.brandingElements.logo.path 
+        } 
+      },
+      // Footer banner rectangle
+      { rect: selectedBranding.brandingElements.footerBanner.rect },
+      // Footer text
+      { text: { 
+          text: selectedBranding.brandingElements.footerBanner.text.content, 
+          options: selectedBranding.brandingElements.footerBanner.text.options 
+        } 
+      }
+    ],
+    slideNumber: selectedBranding.brandingElements.slideNumber
+  });
+
+  blueprint.slides.forEach(slide => {
+    const s = pptx.addSlide({ masterName: 'ADEPT_MASTER' });
+
+    s.addText(slide.title || slide.headline || 'Untitled', {
+      x: '10%', y: '5%', w: '80%', h: '15%',
+      fontSize: selectedBranding.fonts.heading.size,
+      bold: selectedBranding.fonts.heading.bold,
+      color: selectedBranding.colors.primary,
+      align: 'center'
+    });
+
+    let yPos = 20;
+    if (slide.subtitle) {
+      s.addText(slide.subtitle, { 
+        x: '10%', y: yPos + '%', w: '80%', h: '8%', 
+        fontSize: selectedBranding.fonts.subtitle.size, 
+        color: selectedBranding.colors.secondary, 
+        align: 'center' 
+      });
+      yPos += 8;
+    }
+    if (slide.presenter) {
+      s.addText(slide.presenter, { 
+        x: '10%', y: yPos + '%', w: '80%', h: '5%', 
+        fontSize: 18, 
+        color: selectedBranding.colors.secondary, 
+        align: 'center' 
+      });
+      yPos += 6;
+    }
+    if (slide.oneLineProblem) {
+      s.addText(slide.oneLineProblem, { 
+        x: '10%', y: yPos + '%', w: '80%', h: '10%', 
+        fontSize: 20, italic: true, 
+        color: selectedBranding.colors.secondary, 
+        align: 'center' 
+      });
+      yPos += 12;
+    }
+
+    if (slide.text || slide.headline) {
+      s.addText(slide.text || slide.headline, {
+        x: '10%', y: yPos + '%', w: '55%', h: '50%',
+        fontSize: selectedBranding.fonts.body.size, 
+        color: selectedBranding.colors.text, 
+        bullet: true
+      });
+      yPos += 50;
+    }
+
+    s.addText(`[Visual Placeholder]\n${slide.visual || 'Insert image here'}`, {
+      x: '70%', y: '25%', w: '25%', h: '50%',
+      fontSize: 18, 
+      color: selectedBranding.colors.accent, 
+      italic: true, 
+      align: 'center'
+    });
+
+    if (slide.talkingPoints) {
+      s.addNotes(
+        slide.talkingPoints.map(point => `• ${point}`).join('\n')
+      );
+    }
+  });
+
+  pptx.writeFile({ fileName: `ADEPT_Blueprint_${selectedKey}` });
+}
+
 window.onload = () => {
   // Capture pristine original BEFORE loadEdits can overwrite it
   if (!originalBlueprint) {
@@ -467,4 +523,42 @@ window.onload = () => {
   document.body.classList.remove('dark');
   document.getElementById('themeSwitch').checked = false;
   document.getElementById('modeLabel').textContent = 'Light';
+
+ 
 };
+
+ // Wire up all buttons once the DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('prevBtn')?.addEventListener('click', prevSlide);
+    document.getElementById('nextBtn')?.addEventListener('click', nextSlide);
+    document.getElementById('exportBtn')?.addEventListener('click', exportToPPT);
+    document.getElementById('resetBtn')?.addEventListener('click', resetToOriginal);
+    document.getElementById('simulateAIBtn')?.addEventListener('click', simulateAIRequest);
+
+    // Theme toggle (instead of onchange inline)
+    document.getElementById('themeSwitch')?.addEventListener('change', toggleTheme);
+
+    const brandingSelect = document.getElementById('brandingSelect');
+    if (brandingSelect) {
+      brandingSelect.innerHTML = ''; // clear any static options
+
+      Object.entries(brandings).forEach(([key, config]) => {
+
+        console.log(key);
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = config.label || key; // fallback to key if no label
+        brandingSelect.appendChild(option);
+      });
+
+      // Restore last selection (or default to first key)
+      const saved = localStorage.getItem('adeptBranding');
+      brandingSelect.value = saved && brandings[saved] ? saved : Object.keys(brandings)[0];
+
+      brandingSelect.addEventListener('change', (e) => {
+        selectedBrandingKey = e.target.value;
+        localStorage.setItem('adeptBranding', selectedBrandingKey);
+        console.log(`Branding changed to: ${selectedBrandingKey} (${brandings[selectedBrandingKey].label})`);
+      });
+    }
+});

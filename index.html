@@ -8,43 +8,44 @@
 </head>
 <body>
 
-<div class="ribbon" id="ribbon"></div>
+    <div class="ribbon" id="ribbon"></div>
 
-<div class="main-area">
-  <div class="preview-container">
-    <div class="slide-frame" id="slideFrame"></div>
-  </div>
-
-  <div class="bottom-bar">
-    <button onclick="prevSlide()" id="prevBtn">← Previous</button>
-    <span id="counter">Slide 1 of 12</span>
-    <button onclick="nextSlide()" id="nextBtn">Next →</button>
-    <label class="theme-toggle">
-      <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
-      Mode: <span id="modeLabel">Light</span>
-    </label>
-
-      <button  onclick="exportToPPT()">Export PowerPoint</button>
-  <button  onclick="resetToOriginal()">Reset to Original</button>
-  </div>
-
-  <div class="button-group">
-
-</div>
-</div>
+    <div class="main-area">
+        <div class="preview-container">
+            <div class="slide-frame" id="slideFrame"></div>
+        </div>
 
 
+        <div class="bottom-bar">
+            <button id="prevBtn">← Previous</button>
+            <span id="counter">Slide 1 of 12</span>
+            <button id="nextBtn">Next →</button>
+            <label class="theme-toggle">
+                <input type="checkbox" id="themeSwitch">
+                Mode: <span id="modeLabel">Light</span>
+            </label>
 
-<div id="ai-menu">
-  <h5>AI Suggestions (POC)</h5>
-  <ul id="ai-alts"></ul>
-  <input id="ai-input" type="text" placeholder="Describe desired change...">
-  <button onclick="simulateAIRequest()">Send to AI</button>
-</div>
+            <select id="brandingSelect">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <!-- Add more later, e.g. <option value="threat">Threat Division</option> -->
+            </select>
 
-<script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
-<script src="data.js"></script>
-<script src="app.js"></script>
+            <button id="exportBtn">Export PowerPoint</button>
+            <button id="resetBtn">Reset to Original</button>
+        </div>
+    </div>
+
+    <div id="ai-menu">
+        <h5>AI Suggestions: </h5>
+        <ul id="ai-alts"></ul>
+        <input id="ai-input" type="text" placeholder="Describe desired change...">
+        <button id="simulateAIBtn">Ask ADEPT AI</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="data.js"></script>
+    <script type="module" src="app.js"></script>
 
 </body>
 </html>
